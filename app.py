@@ -1,148 +1,78 @@
-# ============================================================
-# 📊 DASHBOARD DE DESPESAS PÚBLICAS — STREAMLIT + PANDAS
-# ✅ Login simples
-# ✅ Leitura automática do arquivo local
-# ✅ Tratamento completo
-# ============================================================
-
 import streamlit as st
-import pandas as pd
 from pathlib import Path
-import plotly.express as px
+import base64
 
-# ------------------------------------------------------------
-# ⚙️ CONFIGURAÇÃO DA PÁGINA
-# ------------------------------------------------------------
-st.set_page_config(page_title="Transparência Tutóia/MA", layout="wide")
-
-# ------------------------------------------------------------
-# 🔐 SISTEMA DE LOGIN
-# ------------------------------------------------------------
-users = {
-    "Administração": "230398",
-    "Cliente": "Tutóia"
-}
-
-def check_login():
-    if "logged" not in st.session_state:
-        st.session_state.logged = False
-
-    if st.session_state.logged:
-        return True
-
-    st.title("🔐 Acesso Restrito")
-    user = st.text_input("Usuário")
-    password = st.text_input("Senha", type="password")
-
-    if st.button("Entrar"):
-        if user in users and users[user] == password:
-            st.session_state.logged = True
-            st.rerun()
-        else:
-            st.error("❌ Usuário ou senha incorretos")
-
-    return False
-
-if not check_login():
-    st.stop()
-
-with st.sidebar:
-    if st.button("🚪 Sair"):
-        st.session_state.logged = False
-        st.rerun()
-
-# ------------------------------------------------------------
-# 📥 CARREGAMENTO DOS DADOS
-# ------------------------------------------------------------
-BASE_DIR = Path(__file__).resolve().parent
-data_path = BASE_DIR / "datasets" / "despesas_2025.csv"
-
-if not data_path.exists():
-    st.error(f"❌ Arquivo não encontrado: {data_path}")
-    st.info("📝 Verifique se o arquivo está dentro da pasta datasets.")
-    st.stop()
-
-df = pd.read_csv(
-    data_path,
-    encoding="latin1",
-    sep=";"
+# ========= CONFIG =========
+st.set_page_config(
+    page_title="CRM de Vendas",
+    page_icon="🧾",
+    layout="wide",
+    initial_sidebar_state="collapsed"
 )
 
-# ------------------------------------------------------------
-# 🧹 TRATAMENTO DOS DADOS
-# ------------------------------------------------------------
-df["Data"] = pd.to_datetime(df["Data"], dayfirst=True, errors="coerce")
-df["Ano"] = df["Data"].dt.year
-df["Mes"] = df["Data"].dt.month_name()
+# ========= CSS PAINEL =========
+def css_app():
+    st.markdown("""
+    <style>
 
-for col in ["Valor Empenhado", "Valor Liquidado", "Valor Pago"]:
-    df[col] = (
-        df[col].astype(str)
-        .str.replace('.', '')
-        .str.replace(',', '.')
-    )
-    df[col] = pd.to_numeric(df[col], errors="coerce")
+    /* Remove ícone "keyboard_double_arrow_right" da barra lateral oculta */
+    button[kind="header"] {display: none !important;}
 
-# ------------------------------------------------------------
-# 🎛️ FILTROS
-# ------------------------------------------------------------
-st.sidebar.title("Filtros")
+    body { background-color:#0e1117 !important; }
 
-anos = sorted(df["Ano"].dropna().unique())
-ano_sel = st.sidebar.selectbox("Selecione o Ano", anos)
+    .center-box {
+        background: linear-gradient(90deg, #12151e, #161b22, #12151e);
+        padding: 25px; border-radius: 12px;
+        border: 1px solid #2d323b;
+        text-align: center; margin-bottom: 40px;
+    }
 
-fornecedores = sorted(df["Nome Fornecedor"].dropna().unique())
-fornecedor_sel = st.sidebar.multiselect("Fornecedor(es)", fornecedores)
+    .title { font-size: 28px; font-weight: 800; color: #ffffff; }
+    .subtitle { font-size: 14px; color: #a6a6a6; margin-top: -4px; }
+    .logo-section { text-align:center; margin-top: 40px; margin-bottom: 10px; }
+    .logo-text { font-size: 22px; font-weight: 700; color: white; margin-top: 10px; }
+    .slogan { font-size: 14px; color: #9fa4ad; margin-top: -5px; }
+    </style>
+    """, unsafe_allow_html=True)
 
-df_filt = df[df["Ano"] == ano_sel]
-if fornecedor_sel:
-    df_filt = df_filt[df_filt["Nome Fornecedor"].isin(fornecedor_sel)]
+# ========= LOGO PAINEL =========
+def exibir_logo_painel():
 
-# ------------------------------------------------------------
-# 📦 MÉTRICAS
-# ------------------------------------------------------------
-st.title("📊 Painel de Transparência Pública — Tutóia/MA")
+    logo_path = Path(__file__).resolve().parent / "img" / "logo_dashboard.png"
 
-total_empenhado = df_filt["Valor Empenhado"].sum()
-total_liquidado = df_filt["Valor Liquidado"].sum()
-total_pago = df_filt["Valor Pago"].sum()
-saldo_pagar = total_empenhado - total_pago
+    if logo_path.exists():
+        with open(logo_path, "rb") as img:
+            base = base64.b64encode(img.read()).decode()
 
-col1, col2, col3, col4 = st.columns(4)
-col1.metric("💰 Valor Empenhado", f"R$ {total_empenhado:,.2f}")
-col2.metric("✅ Valor Liquidado", f"R$ {total_liquidado:,.2f}")
-col3.metric("📦 Valor Pago", f"R$ {total_pago:,.2f}")
-col4.metric("⚠️ Saldo a Pagar", f"R$ {saldo_pagar:,.2f}")
+        st.markdown(
+            f"""
+            <div class='logo-section'>
+                <img src="data:image/png;base64,{base}" width="280px">
+                <div class='logo-text'>Tutóia</div>
+                <div class='slogan'>Bem-vindo ao seu painel de gestão</div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+    else:
+        st.warning("⚠️ Logo não encontrada! Coloque o arquivo em: /app/assets/logo_dashboard.png")
 
-# ------------------------------------------------------------
-# 🏆 GRÁFICO TOP 10
-# ------------------------------------------------------------
-st.subheader("🏅 Top 10 Fornecedores por Valor Pago")
+# ========= INICIAR SISTEMA DIRETO (sem login) =========
+st.session_state.logged = True
+css_app()
 
-top_fornec = (
-    df_filt.groupby("Nome Fornecedor")["Valor Pago"]
-    .sum()
-    .sort_values(ascending=False)
-    .head(10)
-)
+# ========= HEADER =========
+st.markdown("""
+<div class='center-box'>
+    <div class='title'>📊 Portal da Transparência - Tutóia/MA</div>
+    <div class='subtitle'>Acompanhe os gastos públicos da nossa cidade, com dados oficiais.</div>
+</div>
+""", unsafe_allow_html=True)
 
-fig = px.bar(
-    top_fornec,
-    orientation="h",
-    labels={"value": "Total Pago", "index": "Fornecedor"}
-)
+# Logo do painel
+exibir_logo_painel()
 
-st.plotly_chart(fig, use_container_width=True)
-
-# ------------------------------------------------------------
-# 📄 TABELA + DOWNLOAD
-# ------------------------------------------------------------
-st.subheader("📄 Detalhamento dos Dados")
-st.dataframe(df_filt)
-
-st.download_button(
-    "⬇️ Baixar Dados Filtrados",
-    df_filt.to_csv(index=False).encode("utf-8"),
-    "dados_filtrados.csv",
-    mime="text/csv"
-)
+# ✅ Aqui começam as páginas e o dashboard
+# Exemplo de mensagem inicial
+#st.write("✅ Sistema carregado com sucesso!")
+#st.write("🧠 Painel pronto para receber seus gráficos, tabelas e páginas.")
