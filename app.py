@@ -1,21 +1,22 @@
 # ============================================================
-# 📊 DASHBOARD DE DESPESAS PÚBLICAS — STREAMLIT + PANDAS + PLOTLY
-# ✅ Com autenticação simples
-# ✅ Código limpo e sem repetições
-# ✅ Estrutura organizada e didática
+# 📊 DASHBOARD DE DESPESAS PÚBLICAS — STREAMLIT + PANDAS
+# ✅ Login simples
+# ✅ Leitura automática do arquivo local
+# ✅ Tratamento completo
 # ============================================================
 
 import streamlit as st
 import pandas as pd
+from pathlib import Path
 import plotly.express as px
 
 # ------------------------------------------------------------
 # ⚙️ CONFIGURAÇÃO DA PÁGINA
 # ------------------------------------------------------------
-st.set_page_config(page_title="Transparência Pública — Tutóia/MA", layout="wide")
+st.set_page_config(page_title="Transparência Tutóia/MA", layout="wide")
 
 # ------------------------------------------------------------
-# 🔐 SISTEMA DE LOGIN SIMPLES
+# 🔐 SISTEMA DE LOGIN
 # ------------------------------------------------------------
 users = {
     "Administração": "230398",
@@ -29,7 +30,7 @@ def check_login():
     if st.session_state.logged:
         return True
 
-    st.title("🔐 Acesso Restrito ao Sistema")
+    st.title("🔐 Acesso Restrito")
     user = st.text_input("Usuário")
     password = st.text_input("Senha", type="password")
 
@@ -45,7 +46,6 @@ def check_login():
 if not check_login():
     st.stop()
 
-# Botão logout
 with st.sidebar:
     if st.button("🚪 Sair"):
         st.session_state.logged = False
@@ -54,12 +54,19 @@ with st.sidebar:
 # ------------------------------------------------------------
 # 📥 CARREGAMENTO DOS DADOS
 # ------------------------------------------------------------
+BASE_DIR = Path(__file__).resolve().parent
+data_path = BASE_DIR / "datasets" / "despesas_2025.csv"
+
+if not data_path.exists():
+    st.error(f"❌ Arquivo não encontrado: {data_path}")
+    st.info("📝 Verifique se o arquivo está dentro da pasta datasets.")
+    st.stop()
+
 df = pd.read_csv(
-    "archive/despesas_2025.csv",
+    data_path,
     encoding="latin1",
     sep=";"
 )
-
 
 # ------------------------------------------------------------
 # 🧹 TRATAMENTO DOS DADOS
@@ -85,7 +92,7 @@ anos = sorted(df["Ano"].dropna().unique())
 ano_sel = st.sidebar.selectbox("Selecione o Ano", anos)
 
 fornecedores = sorted(df["Nome Fornecedor"].dropna().unique())
-fornecedor_sel = st.sidebar.multiselect("Selecione Fornecedor(es)", fornecedores)
+fornecedor_sel = st.sidebar.multiselect("Fornecedor(es)", fornecedores)
 
 df_filt = df[df["Ano"] == ano_sel]
 if fornecedor_sel:
@@ -108,13 +115,15 @@ col3.metric("📦 Valor Pago", f"R$ {total_pago:,.2f}")
 col4.metric("⚠️ Saldo a Pagar", f"R$ {saldo_pagar:,.2f}")
 
 # ------------------------------------------------------------
-# 🏆 GRÁFICO — TOP 10 FORNECEDORES
+# 🏆 GRÁFICO TOP 10
 # ------------------------------------------------------------
 st.subheader("🏅 Top 10 Fornecedores por Valor Pago")
 
 top_fornec = (
     df_filt.groupby("Nome Fornecedor")["Valor Pago"]
-    .sum().sort_values(ascending=False).head(10)
+    .sum()
+    .sort_values(ascending=False)
+    .head(10)
 )
 
 fig = px.bar(
@@ -128,11 +137,11 @@ st.plotly_chart(fig, use_container_width=True)
 # ------------------------------------------------------------
 # 📄 TABELA + DOWNLOAD
 # ------------------------------------------------------------
-st.subheader("📄 Dados Detalhados")
+st.subheader("📄 Detalhamento dos Dados")
 st.dataframe(df_filt)
 
 st.download_button(
-    "⬇️ Baixar dados filtrados",
+    "⬇️ Baixar Dados Filtrados",
     df_filt.to_csv(index=False).encode("utf-8"),
     "dados_filtrados.csv",
     mime="text/csv"

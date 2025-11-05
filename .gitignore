@@ -1,0 +1,22 @@
+# Ambientes virtuais
+.venv/
+venv/
+
+# Cache do Python
+__pycache__/
+*.pyc
+
+# Secrets locais (NUNCA enviar)
+.streamlit/secrets.toml
+
+# Configurações locais
+.vscode/
+
+# Logs e arquivos temporários
+*.log
+*.tmp
+
+# Ambiente de sistema
+.env
+*.env
+.DS_Store
